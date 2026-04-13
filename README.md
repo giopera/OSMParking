@@ -1,5 +1,7 @@
 # Parking Capacity Viewer
 
+[![AI Slop Inside](https://sladge.net/badge.svg)](https://sladge.net)
+
 A JavaScript application to visualize parking capacity data on an OpenStreetMap using a serverless architecture. Built with Leaflet and the Overpass API, following the structure and standards of [OSMStreetLight](https://github.com/giopera/OSMStreetLight).
 
 ## Features
