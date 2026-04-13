@@ -61,7 +61,7 @@ const CONFIG = {
         },
         other: {
             name: 'Other/Tagged',
-            color: '#9E9E9E',
+            color: '#4a4a4a',
             tags: ['capacity:*']
         },
         no_capacity: {
