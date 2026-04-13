@@ -77,6 +77,19 @@ Each marker color represents the primary parking category:
 | 🩵 Cyan | Men | Men-designated spaces |
 | ⚪ Gray | Other | Other capacity types |
 
+### Multi-Color Markers
+
+When a parking facility has **multiple capacity types**, the marker displays **colored segments** to show all categories:
+
+- **Single category**: Shows one solid colored circle with a symbol
+  - Example: Parking with only main capacity shows one blue circle with "P"
+  
+- **Multiple categories**: Shows pie-chart style segments with a number in the center
+  - Example: Parking with main + disabled + charging shows 3 segments (blue, green, purple) with "3" in center
+  - Hover over the marker to see it enlarge and reveal colors
+
+This allows you to see at a glance which kinds of parking are available at each location!
+
 ## 5. Common Tasks
 
 ### View parking in your city

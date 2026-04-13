@@ -18,6 +18,11 @@ A JavaScript application to visualize parking capacity data on an OpenStreetMap 
   - **Other/Tagged** (Gray) - Other capacity tags
   - **No Info** (Light Gray) - Parking facilities without capacity data
 
+- 🌈 **Multi-Color Markers** - When a parking has multiple capacity types, the marker displays segments with each color:
+  - Single category: Shows one solid color segment
+  - Multiple categories: Shows pie-chart style segments with a number in center
+  - Example: A parking with main + disabled + charging shows 3 colored segments
+
 - 📊 **Comprehensive Tag Support** - Evaluates all OpenStreetMap parking capacity tags:
   - `capacity` - Total parking spaces
   - `capacity:disabled` - Disabled accessible spaces

@@ -22,13 +22,13 @@ class MarkerHandler {
      */
     create(feature) {
         const primaryCategory = overpassHandler.getPrimaryCategory(feature.capacity);
-        const color = this.getCategoryColor(primaryCategory);
+        const allCategories = overpassHandler.getAllCategories(feature.capacity);
         
         // Calculate capacity utilization for opacity
         const opacity = this.calculateOpacity(feature.capacity);
         
-        // Create custom icon
-        const icon = this.createCustomIcon(color, opacity, primaryCategory);
+        // Create custom icon with all categories
+        const icon = this.createMultiColorIcon(allCategories, opacity, primaryCategory);
         
         // Create marker
         const marker = L.marker([feature.lat, feature.lng], { icon: icon });
@@ -36,6 +36,7 @@ class MarkerHandler {
         // Attach data
         marker.data = feature;
         marker.category = primaryCategory;
+        marker.categories = allCategories;
         
         // Add popup
         const popupContent = this.createPopupContent(feature);
@@ -53,7 +54,100 @@ class MarkerHandler {
     }
     
     /**
-     * Create custom icon with category color
+     * Create multi-colored icon based on all categories
+     */
+    createMultiColorIcon(categories, opacity, primaryCategory) {
+        // Create SVG with segmented circle
+        const svgHtml = this.createSegmentedSVG(categories, opacity);
+        
+        const icon = L.divIcon({
+            html: svgHtml,
+            className: 'parking-marker-multi',
+            iconSize: [35, 35],
+            iconAnchor: [17, 17],
+            popupAnchor: [0, -45]
+        });
+        
+        // Insert CSS if not present
+        this.injectMarkerStyles();
+        
+        return icon;
+    }
+    
+    /**
+     * Create segmented circle SVG for multiple categories
+     * Shows color segments for each parking category present
+     */
+    createSegmentedSVG(categories, opacity) {
+        const size = 32;
+        const centerX = size / 2;
+        const centerY = size / 2;
+        const radius = 14;
+        
+        if (categories.length === 0) {
+            categories = ['no_capacity'];
+        }
+        
+        // Single category - simple circle with symbol
+        if (categories.length === 1) {
+            const color = this.getCategoryColor(categories[0]);
+            const symbol = this.getCategorySymbol(categories[0]);
+            return `
+                <div style="position: relative; width: ${size}px; height: ${size}px; margin-bottom: 4px;">
+                    <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="filter: drop-shadow(0 2px 3px rgba(0,0,0,0.25))">
+                        <defs>
+                            <filter id="textOutline">
+                                <feMorphology operator="dilate" radius="0.5" in="SourceGraphic" result="expanded" />
+                            </filter>
+                        </defs>
+                        <circle cx="${centerX}" cy="${centerY}" r="${radius}" fill="${color}" opacity="${opacity}" stroke="white" stroke-width="1.5"/>
+                        <text x="${centerX}" y="${centerY + 4}" text-anchor="middle" font-size="14" font-weight="bold" fill="white" stroke="rgba(0,0,0,0.2)" stroke-width="0.4">
+                            ${symbol}
+                        </text>
+                    </svg>
+                </div>
+            `;
+        }
+        
+        // Multiple categories - segmented circle
+        const segments = categories.map((cat, index) => {
+            const angle = (360 / categories.length) * index;
+            const nextAngle = (360 / categories.length) * (index + 1);
+            const color = this.getCategoryColor(cat);
+            
+            // Convert degrees to radians
+            const startRad = (angle * Math.PI) / 180;
+            const endRad = (nextAngle * Math.PI) / 180;
+            
+            // Calculate points for arc
+            const x1 = centerX + radius * Math.cos(startRad);
+            const y1 = centerY + radius * Math.sin(startRad);
+            const x2 = centerX + radius * Math.cos(endRad);
+            const y2 = centerY + radius * Math.sin(endRad);
+            
+            const largeArc = nextAngle - angle > 180 ? 1 : 0;
+            
+            return `<path d="M ${centerX} ${centerY} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z" fill="${color}" opacity="${opacity}" stroke="white" stroke-width="0.5"/>`;
+        }).join('');
+        
+        // Center circle for symbol
+        const centerColor = this.getCategoryColor(categories[0]);
+        
+        return `
+            <div style="position: relative; width: ${size}px; height: ${size}px; margin-bottom: 4px;">
+                <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="filter: drop-shadow(0 2px 3px rgba(0,0,0,0.25))">
+                    ${segments}
+                    <circle cx="${centerX}" cy="${centerY}" r="7" fill="white" stroke="${centerColor}" stroke-width="1.5" opacity="0.95"/>
+                    <text x="${centerX}" y="${centerY + 3}" text-anchor="middle" font-size="11" font-weight="bold" fill="${centerColor}">
+                        ${categories.length}
+                    </text>
+                </svg>
+            </div>
+        `;
+    }
+    
+    /**
+     * Create custom icon with category color (legacy - single color)
      */
     createCustomIcon(color, opacity, category) {
         const icon = L.divIcon({
@@ -275,6 +369,7 @@ class MarkerHandler {
         const style = document.createElement('style');
         style.id = 'marker-styles';
         style.textContent = `
+            /* Single color marker (legacy) */
             .parking-marker .marker-icon {
                 width: 100%;
                 height: 100%;
@@ -302,6 +397,24 @@ class MarkerHandler {
                 text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
             }
             
+            /* Multi-color marker */
+            .parking-marker-multi {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                cursor: pointer;
+            }
+            
+            .parking-marker-multi svg {
+                transition: transform 0.2s ease, filter 0.2s ease;
+            }
+            
+            .parking-marker-multi:hover svg {
+                transform: scale(1.15);
+                filter: drop-shadow(0 3px 6px rgba(0,0,0,0.35)) !important;
+            }
+            
+            /* Leaflet popup styling */
             .leaflet-popup-content-wrapper {
                 border-radius: 6px;
                 box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
