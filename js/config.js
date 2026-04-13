@@ -15,7 +15,7 @@ const CONFIG = {
     overpass: {
         defaultServer: 'https://overpass-api.de/api/interpreter',
         timeout: 30000, // 30 seconds
-        maxDataZoom: 10 // Only load data at this zoom level or lower
+        maxDataZoom: 13 // Only load data at this zoom level or lower
     },
     
     // Tile Layers (OpenStreetMap Standard)
