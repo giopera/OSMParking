@@ -13,6 +13,7 @@ A JavaScript application to visualize parking capacity data on an OpenStreetMap 
   - **Disabled Parking** (Green) - Accessible parking spaces
   - **Parent/Baby Parking** (Orange) - Parent and baby spaces
   - **Charging Parking** (Purple) - EV charging stations
+  - **Emergency Parking** (Red) - Emergency-only spaces
   - **Women Parking** (Pink) - Women-designated spaces
   - **Men Parking** (Cyan) - Men-designated spaces
   - **Other/Tagged** (Gray) - Other capacity tags
@@ -23,6 +24,14 @@ A JavaScript application to visualize parking capacity data on an OpenStreetMap 
   - Multiple categories: Shows pie-chart style segments with a number in center
   - Example: A parking with main + disabled + charging shows 3 colored segments
 
+- 📍 **Parking Space Elements** - Individual parking spaces displayed as small colored points:
+  - Disabled spaces (Green)
+  - Charging points (Purple)
+  - Parent/baby spaces (Orange)
+  - Women spaces (Pink)
+  - Men spaces (Cyan)
+  - Emergency spaces (Red)
+
 - 📊 **Comprehensive Tag Support** - Evaluates all OpenStreetMap parking capacity tags:
   - `capacity` - Total parking spaces
   - `capacity:disabled` - Disabled accessible spaces
@@ -31,6 +40,8 @@ A JavaScript application to visualize parking capacity data on an OpenStreetMap 
   - `capacity:parent` - Parent/baby spaces
   - `capacity:baby` - Baby/child spaces
   - `capacity:charging` - EV charging points
+  - `capacity:emergency` - Emergency spaces
+  - `parking_space=*` - Individual parking space elements
   - `capacity:*` - Any other capacity subtags
 
 - ⚙️ **Customizable Overpass Server** - Change the Overpass API endpoint via UI popup

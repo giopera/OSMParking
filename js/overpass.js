@@ -23,16 +23,19 @@ class OverpassHandler {
     /**
      * Build Overpass QL query for parking areas
      * Queries for all parking-related features with and without capacity tags
+     * Also queries for parking space elements
      */
     buildQuery(bounds) {
         const { south, west, north, east } = bounds;
         
-        // Overpass QL query for parking facilities with capacity tags and untagged parkings
+        // Overpass QL query for parking facilities and parking space elements
         const query = `
 [bbox:${south},${west},${north},${east}][out:json];
 (
   way["amenity"="parking"];
   node["amenity"="parking"];
+  node["amenity"="parking_space"]["parking_space"~"disabled|charging|parent|woman|man|emergency"];
+  way["amenity"="parking_space"]["parking_space"~"disabled|charging|parent|woman|man|emergency"];
 );
 out center;
 `;
@@ -140,6 +143,9 @@ out center;
             return null;
         }
         
+        // Check if this is a parking_space element
+        const isParkingSpace = tags.amenity === 'parking_space';
+        
         // Extract capacity information
         const capacity = this.extractCapacityInfo(tags);
         
@@ -152,7 +158,9 @@ out center;
             address: tags['addr:street'] || '',
             capacity: capacity,
             tags: tags,
-            url: tags.website || tags.url || ''
+            url: tags.website || tags.url || '',
+            isParkingSpace: isParkingSpace,
+            parkingSpaceType: tags.parking_space || null
         };
     }
     
@@ -168,7 +176,8 @@ out center;
             'capacity:baby',
             'capacity:charging',
             'capacity:woman',
-            'capacity:man'
+            'capacity:man',
+            'capacity:emergency'
         ];
         
         capacityKeys.forEach(key => {
@@ -193,6 +202,7 @@ out center;
     getPrimaryCategory(capacityInfo) {
         // Priority order
         if (Object.keys(capacityInfo).length === 0) return 'no_capacity';
+        if (capacityInfo['capacity:emergency']) return 'emergency';
         if (capacityInfo['capacity:charging']) return 'charging';
         if (capacityInfo['capacity:disabled']) return 'disabled';
         if (capacityInfo['capacity:parent'] || capacityInfo['capacity:baby']) return 'parent';
@@ -214,6 +224,7 @@ out center;
             if (capacityInfo['capacity:disabled']) categories.push('disabled');
             if (capacityInfo['capacity:parent'] || capacityInfo['capacity:baby']) categories.push('parent');
             if (capacityInfo['capacity:charging']) categories.push('charging');
+            if (capacityInfo['capacity:emergency']) categories.push('emergency');
             if (capacityInfo['capacity:woman']) categories.push('woman');
             if (capacityInfo['capacity:man']) categories.push('man');
         }

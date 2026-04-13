@@ -73,6 +73,7 @@ Each marker color represents the primary parking category:
 | 🟢 Green | Disabled | Accessible/wheelchair spaces |
 | 🟠 Orange | Parent/Baby | Parent & baby parking spaces |
 | 🟣 Purple | Charging | EV charging stations |
+| 🔴 Red | Emergency | Emergency-only spaces |
 | 🩷 Pink | Women | Women-designated spaces |
 | 🩵 Cyan | Men | Men-designated spaces |
 | ⚪ Gray | Other | Other capacity types |
@@ -88,7 +89,18 @@ When a parking facility has **multiple capacity types**, the marker displays **c
   - Example: Parking with main + disabled + charging shows 3 segments (blue, green, purple) with "3" in center
   - Hover over the marker to see it enlarge and reveal colors
 
-This allows you to see at a glance which kinds of parking are available at each location!
+### Parking Space Elements
+
+Individual parking spaces appear as **small colored points** on the map:
+
+- **🟢 Green dots** - Disabled parking spaces
+- **🟣 Purple dots** - EV charging points
+- **🟠 Orange dots** - Parent/baby spaces
+- **🩷 Pink dots** - Women-designated spaces
+- **🩵 Cyan dots** - Men-designated spaces
+- **🔴 Red dots** - Emergency spaces
+
+Hover over the small points to see them enlargen and reveal their purpose. Click to see details!
 
 ## 5. Common Tasks
 

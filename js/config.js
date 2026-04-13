@@ -59,6 +59,11 @@ const CONFIG = {
             color: '#00BCD4',
             tags: ['capacity:man']
         },
+        emergency: {
+            name: 'Emergency Parking',
+            color: '#F44336',
+            tags: ['capacity:emergency']
+        },
         other: {
             name: 'Other/Tagged',
             color: '#4a4a4a',
@@ -68,6 +73,40 @@ const CONFIG = {
             name: 'Parking (No Info)',
             color: '#BDBDBD',
             tags: []
+        }
+    },
+    
+    // Parking Space Elements (small point markers)
+    parkingSpaces: {
+        disabled: {
+            name: 'Disabled Space',
+            color: '#4CAF50',
+            icon: '♿'
+        },
+        charging: {
+            name: 'Charging Point',
+            color: '#9C27B0',
+            icon: '⚡'
+        },
+        parent: {
+            name: 'Parent/Baby Space',
+            color: '#FF9800',
+            icon: '👶'
+        },
+        woman: {
+            name: 'Woman Space',
+            color: '#E91E63',
+            icon: '♀'
+        },
+        man: {
+            name: 'Man Space',
+            color: '#00BCD4',
+            icon: '♂'
+        },
+        emergency: {
+            name: 'Emergency Space',
+            color: '#F44336',
+            icon: '🚨'
         }
     },
     

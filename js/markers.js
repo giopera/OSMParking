@@ -18,9 +18,14 @@ class MarkerHandler {
     }
     
     /**
-     * Create marker for a parking feature
+     * Create marker for a parking feature or parking space element
      */
     create(feature) {
+        // Handle parking space elements differently
+        if (feature.isParkingSpace) {
+            return this.createParkingSpaceMarker(feature);
+        }
+        
         const primaryCategory = overpassHandler.getPrimaryCategory(feature.capacity);
         const allCategories = overpassHandler.getAllCategories(feature.capacity);
         
@@ -40,6 +45,60 @@ class MarkerHandler {
         
         // Add popup
         const popupContent = this.createPopupContent(feature);
+        marker.bindPopup(popupContent);
+        
+        // Add to layer
+        if (this.markerLayer) {
+            marker.addTo(this.markerLayer);
+        }
+        
+        // Store marker
+        this.markers.set(feature.id, marker);
+        
+        return marker;
+    }
+    
+    /**
+     * Create a small colored point marker for parking space elements
+     */
+    createParkingSpaceMarker(feature) {
+        const spaceType = feature.parkingSpaceType;
+        const spaceConfig = CONFIG.parkingSpaces[spaceType];
+        
+        if (!spaceConfig) {
+            return null; // Unknown parking space type
+        }
+        
+        // Create small point marker
+        const icon = L.divIcon({
+            html: `
+                <div class="parking-space-marker" style="background-color: ${spaceConfig.color};">
+                    <span class="parking-space-icon">${spaceConfig.icon}</span>
+                </div>
+            `,
+            className: 'parking-space-point',
+            iconSize: [12, 12],
+            iconAnchor: [6, 6],
+            popupAnchor: [0, -20]
+        });
+        
+        // Create marker
+        const marker = L.marker([feature.lat, feature.lng], { icon: icon });
+        marker.data = feature;
+        marker.spaceType = spaceType;
+        
+        // Add popup
+        const popupContent = `
+            <div class="marker-popup">
+                <h3>${spaceConfig.name}</h3>
+                <p style="color: ${spaceConfig.color}; font-weight: bold;">${spaceConfig.name}</p>
+                <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #e0e0e0;">
+                    <a href="https://www.openstreetmap.org/${feature.type}/${feature.id}" target="_blank" style="color: #999; text-decoration: none; font-size: 10px;">
+                        View on OSM →
+                    </a>
+                </div>
+            </div>
+        `;
         marker.bindPopup(popupContent);
         
         // Add to layer
@@ -179,6 +238,7 @@ class MarkerHandler {
             disabled: '♿',
             parent: '👶',
             charging: '⚡',
+            emergency: '🚨',
             woman: '♀',
             man: '♂',
             no_capacity: '?',
@@ -412,6 +472,36 @@ class MarkerHandler {
             .parking-marker-multi:hover svg {
                 transform: scale(1.15);
                 filter: drop-shadow(0 3px 6px rgba(0,0,0,0.35)) !important;
+            }
+            
+            /* Parking space point markers */
+            .parking-space-point {
+                cursor: pointer;
+            }
+            
+            .parking-space-marker {
+                width: 100%;
+                height: 100%;
+                border-radius: 50%;
+                border: 1.5px solid white;
+                box-shadow: 0 1.5px 4px rgba(0, 0, 0, 0.4);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: transform 0.15s ease, box-shadow 0.15s ease;
+            }
+            
+            .parking-space-point:hover .parking-space-marker {
+                transform: scale(1.5);
+                box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+            }
+            
+            .parking-space-icon {
+                font-size: 8px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                line-height: 1;
             }
             
             /* Leaflet popup styling */
