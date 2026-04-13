@@ -1,0 +1,30 @@
+{
+  "name": "parking-capacity",
+  "version": "1.0.0",
+  "description": "OpenStreetMap parking capacity viewer using Leaflet and Overpass API",
+  "main": "index.html",
+  "scripts": {
+    "start": "python -m http.server 8000",
+    "serve": "npx http-server",
+    "dev": "npx live-server"
+  },
+  "keywords": [
+    "osm",
+    "openstreetmap",
+    "parking",
+    "leaflet",
+    "overpass",
+    "maps",
+    "capacity"
+  ],
+  "author": "",
+  "license": "ODbL-1.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/giopera/parking_capacity.git"
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1",
+    "live-server": "^1.2.2"
+  }
+}

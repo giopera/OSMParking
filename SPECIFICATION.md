@@ -1,0 +1,424 @@
+# Technical Specification
+
+## Architecture Overview
+
+The Parking Capacity Viewer is a **serverless, client-side only** web application that follows the architecture of OSMStreetLight.
+
+```
+┌──────────────────┐
+│   User Browser   │
+│  (index.html)    │
+└─────────┬────────┘
+          │
+          ├─────────────────┬─────────────────┐
+          │                 │                 │
+    ┌─────v─────┐    ┌─────v──────┐   ┌──────v───────┐
+    │   Leaflet │    │  Overpass  │   │ LocalStorage │
+    │   Library │    │    API     │   │  (Prefs)     │
+    └───────────┘    └────────────┘   └──────────────┘
+          │
+    ┌─────v─────────────────────┐
+    │  OpenStreetMap Tile Layer │
+    │  (Mapnik/Standard)        │
+    └───────────────────────────┘
+```
+
+### Stack
+
+- **Frontend**: Vanilla JavaScript (ES6+), HTML5, CSS3
+- **Mapping**: Leaflet.js 1.9.4 (lightweight, open-source)
+- **Data Source**: Overpass API (OpenStreetMap database queries)
+- **Tiles**: OpenStreetMap standard tile layer (Mapnik)
+- **Storage**: Browser localStorage (client-side only)
+- **Backend**: None (fully serverless)
+
+## File Structure
+
+```
+parking_capacity/
+├── index.html              # Main entry point
+├── package.json            # NPM configuration
+├── .gitignore             # Git ignore rules
+├── LICENSE                # ODbL/MIT licenses
+├── README.md              # Main documentation
+├── QUICKSTART.md          # Quick start guide
+├── EXAMPLES.md            # Usage examples & customization
+├── CONTRIBUTING.md        # Contribution guidelines
+├── SPECIFICATION.md       # This file
+│
+├── js/                    # Application logic
+│   ├── app.js            # Main application controller
+│   ├── config.js         # Configuration constants
+│   ├── overpass.js       # Overpass API handler
+│   └── markers.js        # Marker management & styling
+│
+└── css/
+    └── style.css         # Application styling
+```
+
+## Module Architecture
+
+### 1. **config.js** - Configuration Module
+Centralized configuration constants:
+- Map defaults (center, zoom levels)
+- Overpass API settings
+- Category definitions and colors
+- Tile layer configuration
+
+**Exports**: Global `CONFIG` object
+
+### 2. **overpass.js** - Overpass API Handler
+Manages communication with OpenStreetMap Overpass API:
+- Builds Overpass QL queries
+- Handles HTTP requests with abort support
+- Parses Overpass JSON responses
+- Extracts parking capacity data
+- Determines primary and secondary categories
+
+**Exports**: Global `overpassHandler` instance
+
+**Key Methods**:
+- `buildQuery(bounds)` - Generate Overpass QL query
+- `fetchParkingData(bounds)` - Fetch data from API
+- `parseOverpassData(data)` - Parse API response
+- `getPrimaryCategory(capacityInfo)` - Categorize parking
+- `getAllCategories(capacityInfo)` - Get all applicable categories
+
+### 3. **markers.js** - Marker Handler
+Manages marker visualization on the map:
+- Creates custom marker icons with category colors
+- Generates popup content with parking details
+- Manages marker lifecycle (create, delete, retrieve)
+- Handles marker styling and interactivity
+
+**Exports**: Global `markerHandler` instance
+
+**Key Methods**:
+- `create(feature)` - Create single marker
+- `addMarkers(features)` - Create multiple markers
+- `clear()` - Remove all markers
+- `createPopupContent(feature)` - Generate popup HTML
+- `getCategoryColor(category)` - Get category color
+
+### 4. **app.js** - Application Controller
+Main application logic and UI orchestration:
+- Initializes Leaflet map
+- Sets up event listeners
+- Manages data loading workflow
+- Handles user interactions
+- Persists user preferences
+
+**Exports**: Global `parkingApp` instance (in `window`)
+
+**Key Methods**:
+- `init()` - Initialize application
+- `setupMap()` - Create Leaflet map
+- `loadData()` - Fetch and display parking data
+- `clearData()` - Remove all markers
+- `updateOverpassServer()` - Change API endpoint
+
+## Data Flow
+
+### 1. User Loads Application
+```
+Browser → index.html → DOM Parser → CSS & JS Loader
+                    ↓
+         Initialize app.js (on DOMContentLoaded)
+                    ↓
+         Create map, add tile layer, initialize handlers
+                    ↓
+         Load user preferences from localStorage
+```
+
+### 2. User Requests Data
+```
+Click "Load Data"
+         ↓
+Check zoom level (must be ≤ 10)
+         ↓
+Get current map bounds (LatLngBounds)
+         ↓
+Pass to overpassHandler.fetchParkingData()
+         ↓
+Build Overpass QL query
+         ↓
+POST to Overpass API
+         ↓
+Parse JSON response
+         ↓
+Create feature objects (lat, lng, capacity, tags)
+         ↓
+Pass to markerHandler.addMarkers()
+         ↓
+Create markers with custom icons
+         ↓
+Add popups with capacity information
+         ↓
+Display on map, save stats in UI
+```
+
+### 3. User Interacts with Marker
+```
+Click marker on map
+         ↓
+Leaflet triggers popup event
+         ↓
+Display popupContent (generated by markerHandler)
+         ↓
+User can click links (website, OSM view)
+```
+
+## Query Language: Overpass QL
+
+The application uses Overpass Query Language (QL) to query parking data:
+
+```
+[bbox:south,west,north,east];
+(
+  way["amenity"="parking"]["capacity"];
+  node["amenity"="parking"]["capacity"];
+);
+out center;
+```
+
+**Elements**:
+- `[bbox:s,w,n,e]` - Bounding box filter
+- `way[key=value]` - Way with specific tag
+- `node[key=value]` - Node with specific tag
+- `out center` - Return center point for ways
+
+**Parking Tags Queried**:
+- `capacity` - Total spaces
+- `capacity:disabled` - Accessible spaces
+- `capacity:parent` / `capacity:baby` - Family spaces
+- `capacity:charging` - EV charging
+- `capacity:woman` / `capacity:man` - Gender-specific
+
+## Category System
+
+### Primary Category (Priority Order)
+1. Charging
+2. Disabled
+3. Parent/Baby
+4. Woman
+5. Man
+6. Main (general capacity)
+7. Other
+
+**Determines**: Marker color and icon
+
+### Secondary Categories
+All applicable categories shown in popup as badges.
+
+**Determines**: Additional information displayed to user
+
+### Color Coding
+Each category has a consistent color:
+- **Main** (#2196F3) - Blue
+- **Disabled** (#4CAF50) - Green
+- **Parent** (#FF9800) - Orange
+- **Charging** (#9C27B0) - Purple
+- **Woman** (#E91E63) - Pink
+- **Man** (#00BCD4) - Cyan
+- **Other** (#9E9E9E) - Gray
+
+## State Management
+
+### Global State
+- **overpassHandler**: Current Overpass server URL, abort controller
+- **markerHandler**: Active markers map, marker layer reference
+- **parkingApp**: Map instance, loading state, current bounds
+
+### User Preferences (localStorage)
+- `overpass-url` - Custom Overpass server endpoint
+- `map-center` - Last viewed map center [lat, lng]
+- `map-zoom` - Last viewed zoom level
+
+### UI State
+- Loading spinner visibility
+- Status message text
+- Panel expanded/collapsed state
+
+## Performance Considerations
+
+### Zoom Level Restriction
+- **Data loads only at zoom ≤ 10** to prevent excessive API calls
+- Reduces Overpass load and browser memory usage
+- Balances data granularity with performance
+
+### Marker Rendering
+- Markers created with Leaflet's efficient rendering
+- SVG-based icons (scalable, small size)
+- Lazy popup generation (on-demand)
+
+### API Optimization
+- Single Overpass query per bounds request
+- Abort previous request if new one starts
+- No automatic refreshing (user-triggered)
+
+### Browser Resources
+- No external dependencies except Leaflet and CDN resources
+- Single-page application (no page reloads)
+- Minimal memory footprint
+
+## Error Handling
+
+### Network Errors
+```javascript
+Try {
+  Fetch from Overpass API
+} Catch (AbortError) {
+  Log cancellation (expected)
+} Catch (Error) {
+  Display user-friendly error message
+}
+```
+
+### Zoom Level Validation
+```javascript
+If (zoom > maxDataZoom) {
+  Show message asking to zoom in
+  Prevent data load
+}
+```
+
+### Feature Parsing Errors
+- Skip invalid features silently
+- Log to console for debugging
+- Continue processing other features
+
+## OSM Standards Compliance
+
+### Tile Layer
+- Uses OpenStreetMap standard tile layer (Mapnik)
+- Proper attribution: "© OpenStreetMap contributors"
+- Respects tile server usage policies
+
+### Data Licensing
+- All data from OpenStreetMap (ODbL 1.0)
+- Application output also under ODbL 1.0
+- Proper attribution provided
+
+### API Usage
+- Respects Overpass API rate limits
+- Uses POST requests for complex queries
+- Avoids excessive/concurrent requests
+
+### Parking Data Tags
+- Queries only standard OSM parking tags
+- `amenity=parking` for all features
+- `capacity` and `capacity:*` subtags
+
+## Browser Compatibility
+
+### Supported Browsers
+- Chrome/Edge: Latest 2 versions
+- Firefox: Latest 2 versions
+- Safari: Latest 2 versions
+
+### Required Features
+- ES6 JavaScript support
+- Fetch API
+- LocalStorage
+- SVG rendering
+- CSS Grid/Flexbox
+
+### Not Required
+- No build tools needed
+- No transpilation required
+- No polyfills needed (for modern browsers)
+
+## Future Enhancement Possibilities
+
+### Immediate
+- URL parameters for initial location
+- Category filtering UI
+- Search by parking name/address
+
+### Medium-term
+- Marker clustering for dense areas
+- Real-time occupancy data (if available)
+- Capacity statistics dashboard
+- Export to GeoJSON/CSV
+
+### Long-term
+- Mobile app (React Native/Flutter)
+- Historical trend analysis
+- Community ratings/reviews
+- Integration with parking APIs
+- Predictive availability
+
+## Security Considerations
+
+### Client-side Only
+- No backend server (no injection attacks)
+- No credential storage
+- LocalStorage isolated per domain
+
+### Data Validation
+- User input (Overpass URL) URL-validated
+- API responses parsed safely
+- HTML content escaped in popups
+
+### CORS
+- Uses CORS-enabled APIs (Overpass, tiles)
+- No sensitive data transmitted
+- API calls are read-only
+
+## Testing Strategy
+
+### Manual Testing
+1. **Map functionality**: Pan, zoom, tile loading
+2. **Data loading**: Various zoom levels, map areas
+3. **Marker display**: Colors, popups, interactions
+4. **Preferences**: Persistence across sessions
+5. **Browsers**: Chrome, Firefox, Safari, Edge
+6. **Devices**: Desktop, tablet, mobile
+
+### Performance Testing
+1. Load large datasets (1000+ markers)
+2. Dense urban areas
+3. Network throttling simulation
+4. Mobile device performance
+
+### Error Testing
+1. Network failures
+2. Invalid Overpass responses
+3. Missing data fields
+4. Invalid bounds
+
+## Deployment
+
+### Static Hosting
+Application can be deployed to:
+- GitHub Pages
+- Netlify
+- Vercel
+- Any static web host
+
+### No Server Required
+- No backend dependencies
+- No database
+- No authentication
+- Just serve HTML/CSS/JS files
+
+### CDN Recommended
+- Serve Leaflet from CDN
+- Leaflet icons pre-cached
+- Faster tile loading
+
+## Maintenance
+
+### Dependencies
+- Leaflet: No breaking changes expected (stable API)
+- OpenStreetMap tiles: Continuously maintained
+- Overpass API: Community-maintained
+
+### Data Updates
+- OSM data updates automatically (no caching)
+- Application works with latest mapping data
+
+### Browser Changes
+- Monitor for new browser APIs
+- Test on new browser versions
+- Update documentation as needed

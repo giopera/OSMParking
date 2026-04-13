@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parking Capacity - OSM Viewer</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Map container -->
+    <div id="map"></div>
+    
+    <!-- Control panel -->
+    <div id="control-panel">
+        <div id="panel-header">
+            <h2>Parking Capacity</h2>
+            <button id="toggle-panel" title="Collapse panel">−</button>
+        </div>
+        
+        <div id="panel-content">
+            <!-- Overpass Server Configuration -->
+            <div class="control-section collapsible-section">
+                <button class="section-toggle" data-target="overpass-content" title="Toggle Overpass settings">
+                    <span class="toggle-icon" style="padding-left: 5px;">▶</span>
+                    <span class="section-title">Overpass Server</span>
+                </button>
+                <div id="overpass-content" class="section-content collapsed">
+                    <label for="overpass-url">Server URL:</label>
+                    <textarea id="overpass-url" rows="3" placeholder="https://overpass-api.de/api/interpreter"></textarea>
+                    <button id="update-overpass">Update Server</button>
+                </div>
+            </div>
+            
+            <!-- Zoom Level Info -->
+            <div class="control-section">
+                <p id="zoom-info">Zoom: - (Data loading available at zoom ≤ 10)</p>
+                <p id="data-status">Status: Ready</p>
+            </div>
+            
+            <!-- Category Legend -->
+            <div class="control-section">
+                <h3>Categories</h3>
+                <div id="legend">
+                    <div class="legend-item">
+                        <span class="legend-color" style="background-color: #2196F3;"></span>
+                        <span>Only capacity tagged</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color" style="background-color: #4CAF50;"></span>
+                        <span>Disabled tagged</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color" style="background-color: #FF9800;"></span>
+                        <span>Parent/Baby tagged</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color" style="background-color: #9C27B0;"></span>
+                        <span>Charging tagged</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color" style="background-color: #9E9E9E;"></span>
+                        <span>Other</span>
+                    </div>                    
+                    <div class="legend-item">
+                        <span class="legend-color" style="background-color: #BDBDBD;"></span>
+                        <span>No tagging</span>
+                    </div>                
+                </div>
+            </div>
+            
+            <!-- Data Controls -->
+            <div class="control-section">
+                <button id="load-data">Load Data</button>
+                <button id="clear-data">Clear Data</button>
+            </div>
+            
+            <!-- Attribution -->
+            <div class="control-section attribution">
+                <p>Data © OpenStreetMap contributors</p>
+                <p>Built with Leaflet & Overpass API</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Loading spinner -->
+    <div id="loading-spinner" class="hidden">
+        <div class="spinner"></div>
+        <p>Loading parking data...</p>
+    </div>
+    
+    <!-- Leaflet JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    
+    <!-- Application Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/overpass.js"></script>
+    <script src="js/markers.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
