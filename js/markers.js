@@ -7,6 +7,7 @@ class MarkerHandler {
     constructor() {
         this.markers = new Map(); // Store markers by ID
         this.markerLayer = null;
+        this.stylesInjected = false; // Avoid re-injecting styles
     }
     
     /**
@@ -43,9 +44,16 @@ class MarkerHandler {
         marker.category = primaryCategory;
         marker.categories = allCategories;
         
-        // Add popup
-        const popupContent = this.createPopupContent(feature);
-        marker.bindPopup(popupContent);
+        // Lazy-load popup on demand for better performance
+        marker.on('popupopen', () => {
+            if (!marker._popupContent) {
+                marker._popupContent = this.createPopupContent(feature);
+                marker.setPopupContent(marker._popupContent);
+            }
+        });
+        
+        // Bind empty popup initially (content loaded on open)
+        marker.bindPopup('');
         
         // Add to layer
         if (this.markerLayer) {
@@ -71,11 +79,7 @@ class MarkerHandler {
         
         // Create small point marker
         const icon = L.divIcon({
-            html: `
-                <div class="parking-space-marker" style="background-color: ${spaceConfig.color};">
-                    <span class="parking-space-icon">${spaceConfig.icon}</span>
-                </div>
-            `,
+            html: `<div class="parking-space-marker" style="background-color: ${spaceConfig.color};"><span class="parking-space-icon">${spaceConfig.icon}</span></div>`,
             className: 'parking-space-point',
             iconSize: [12, 12],
             iconAnchor: [6, 6],
@@ -87,19 +91,17 @@ class MarkerHandler {
         marker.data = feature;
         marker.spaceType = spaceType;
         
-        // Add popup
-        const popupContent = `
-            <div class="marker-popup">
-                <h3>${spaceConfig.name}</h3>
-                <p style="color: ${spaceConfig.color}; font-weight: bold;">${spaceConfig.name}</p>
-                <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #e0e0e0;">
-                    <a href="https://www.openstreetmap.org/${feature.type}/${feature.id}" target="_blank" style="color: #999; text-decoration: none; font-size: 10px;">
-                        View on OSM →
-                    </a>
-                </div>
-            </div>
-        `;
-        marker.bindPopup(popupContent);
+        // Lazy-load popup on demand
+        marker.on('popupopen', () => {
+            if (!marker._popupContent) {
+                const popupContent = `<div class="marker-popup"><h3>${spaceConfig.name}</h3><p style="color: ${spaceConfig.color}; font-weight: bold;">${spaceConfig.name}</p><div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #e0e0e0;"><a href="https://www.openstreetmap.org/${feature.type}/${feature.id}" target="_blank" style="color: #999; text-decoration: none; font-size: 10px;">View on OSM →</a></div></div>`;
+                marker._popupContent = popupContent;
+                marker.setPopupContent(popupContent);
+            }
+        });
+        
+        // Bind empty popup initially (content loaded on open)
+        marker.bindPopup('');
         
         // Add to layer
         if (this.markerLayer) {
@@ -126,9 +128,6 @@ class MarkerHandler {
             iconAnchor: [17, 17],
             popupAnchor: [0, -45]
         });
-        
-        // Insert CSS if not present
-        this.injectMarkerStyles();
         
         return icon;
     }
@@ -205,29 +204,7 @@ class MarkerHandler {
         `;
     }
     
-    /**
-     * Create custom icon with category color (legacy - single color)
-     */
-    createCustomIcon(color, opacity, category) {
-        const icon = L.divIcon({
-            html: `
-                <div class="marker-icon" style="background-color: ${color}; opacity: ${opacity};">
-                    <span class="marker-icon-inner">
-                        ${this.getCategorySymbol(category)}
-                    </span>
-                </div>
-            `,
-            className: 'parking-marker',
-            iconSize: [30, 30],
-            iconAnchor: [15, 35],
-            popupAnchor: [0, -45]
-        });
-        
-        // Insert CSS if not present
-        this.injectMarkerStyles();
-        
-        return icon;
-    }
+
     
     /**
      * Get category symbol for marker
@@ -382,16 +359,29 @@ class MarkerHandler {
     }
     
     /**
-     * Add many markers at once
+     * Add many markers at once with batching for better performance
      */
     addMarkers(features) {
-        features.forEach(feature => {
-            try {
-                this.create(feature);
-            } catch (error) {
-                console.error('Error creating marker for feature:', feature, error);
+        const BATCH_SIZE = 50; // Process 50 markers per animation frame
+        let batchIndex = 0;
+        
+        const processBatch = () => {
+            const end = Math.min(batchIndex + BATCH_SIZE, features.length);
+            for (let i = batchIndex; i < end; i++) {
+                try {
+                    this.create(features[i]);
+                } catch (error) {
+                    console.error('Error creating marker for feature:', features[i], error);
+                }
             }
-        });
+            batchIndex = end;
+            
+            if (batchIndex < features.length) {
+                requestAnimationFrame(processBatch);
+            }
+        };
+        
+        requestAnimationFrame(processBatch);
     }
     
     /**
@@ -404,30 +394,18 @@ class MarkerHandler {
         this.markers.clear();
     }
     
-    /**
-     * Get marker by ID
-     */
-    getMarker(id) {
-        return this.markers.get(id);
-    }
-    
-    /**
-     * Get all markers
-     */
-    getAllMarkers() {
-        return Array.from(this.markers.values());
-    }
+
     
     /**
      * Inject marker CSS styles
      */
     injectMarkerStyles() {
-        if (document.getElementById('marker-styles')) {
+        if (this.stylesInjected) {
             return; // Already injected
         }
+        this.stylesInjected = true;
         
         const style = document.createElement('style');
-        style.id = 'marker-styles';
         style.textContent = `
             /* Single color marker (legacy) */
             .parking-marker .marker-icon {

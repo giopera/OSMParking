@@ -14,6 +14,7 @@ class ParkingCapacityApp {
      * Initialize the application
      */
     init() {
+        this.mapChangeTimeout = null;
         this.setupMap();
         this.setupEventListeners();
         this.loadUserPreferences();
@@ -35,10 +36,11 @@ class ParkingCapacityApp {
             maxZoom: CONFIG.tiles.standard.maxZoom
         }).addTo(this.map);
         
-        // Initialize marker layer
+        // Initialize marker layer and inject styles
         markerHandler.initializeLayer(this.map);
+        markerHandler.injectMarkerStyles();
         
-        // Listen to map events
+        // Listen to map events with debouncing
         this.map.on('moveend', () => this.onMapChanged());
         this.map.on('zoomend', () => this.onMapChanged());
     }
@@ -76,21 +78,28 @@ class ParkingCapacityApp {
     }
     
     /**
-     * Handle map change events
+     * Handle map change events (debounced)
      */
     async onMapChanged() {
-        const zoom = this.map.getZoom();
-        const info = document.getElementById('zoom-info');
-        
-        if (info) {
-            info.textContent = `Zoom: ${zoom} (Data loading available at zoom ≤ ${CONFIG.overpass.maxDataZoom})`;
+        // Debounce rapid map changes
+        if (this.mapChangeTimeout) {
+            clearTimeout(this.mapChangeTimeout);
         }
         
-        // Auto-load data if in range and not already loading
-        if (zoom <= CONFIG.overpass.maxDataZoom && !this.isLoading) {
-            // Optionally auto-load could be enabled here
-            // await this.loadData();
-        }
+        this.mapChangeTimeout = setTimeout(() => {
+            const zoom = this.map.getZoom();
+            const info = document.getElementById('zoom-info');
+            
+            if (info) {
+                info.textContent = `Zoom: ${zoom} (Data loading available at zoom ≤ ${CONFIG.overpass.maxDataZoom})`;
+            }
+            
+            // Auto-load data if in range and not already loading
+            if (zoom <= CONFIG.overpass.maxDataZoom && !this.isLoading) {
+                // Optionally auto-load could be enabled here
+                // await this.loadData();
+            }
+        }, 300); // Debounce by 300ms
     }
     
     /**
@@ -99,7 +108,7 @@ class ParkingCapacityApp {
     async loadData() {
         const zoom = this.map.getZoom();
         
-        // Check zoom level
+        // Check zoom level - only allow loading at zoom level > maxDataZoom
         if (zoom < CONFIG.overpass.maxDataZoom) {
             this.updateStatus(`Error: Zoom in to level ${CONFIG.overpass.maxDataZoom} or lower to load data`);
             return;
@@ -230,7 +239,7 @@ class ParkingCapacityApp {
             }
         }
         
-        // Save map position on change
+        // Save map position on moveend (avoid duplicate listener)
         this.map.on('moveend', () => {
             const center = this.map.getCenter();
             localStorage.setItem('map-center', JSON.stringify([center.lat, center.lng]));

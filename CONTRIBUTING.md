@@ -99,4 +99,4 @@ Test your changes:
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the ODbL-1.0 license (same as OpenStreetMap data).
+By contributing, you agree that your contributions will be licensed under the GPLv3 License.

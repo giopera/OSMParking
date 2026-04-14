@@ -14,7 +14,7 @@ const CONFIG = {
     // Overpass API Configuration
     overpass: {
         defaultServer: 'https://overpass-api.de/api/interpreter',
-        timeout: 30000, // 30 seconds
+        timeout: 120000, // 30 seconds
         maxDataZoom: 13 // Only load data at this zoom level or lower
     },
     
@@ -31,7 +31,7 @@ const CONFIG = {
     categories: {
         main: {
             name: 'Main Parking',
-            color: '#2196F3',
+            color: '#2196f3',
             tags: ['capacity']
         },
         disabled: {
