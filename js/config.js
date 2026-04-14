@@ -5,7 +5,7 @@
 const CONFIG = {
     // Default map center (can be changed based on parameters)
     map: {
-        defaultCenter: [51.505, -0.09],
+        defaultCenter: [41.902277, 12.476349],
         defaultZoom: 13,
         minZoom: 1,
         maxZoom: 19
