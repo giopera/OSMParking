@@ -30,7 +30,7 @@ class OverpassHandler {
         
         // Overpass QL query for parking facilities and parking space elements
         const query = `
-[bbox:${south},${west},${north},${east}][out:json];
+[bbox:${south},${west},${north},${east}][out:json][timeout:${Math.floor(CONFIG.overpass.timeout / 1000)}];
 (
   way["amenity"="parking"];
   node["amenity"="parking"];
