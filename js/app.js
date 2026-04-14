@@ -40,6 +40,10 @@ class ParkingCapacityApp {
         markerHandler.initializeLayer(this.map);
         markerHandler.injectMarkerStyles();
         
+        // Initialize clustering
+        clusteringHandler.initializeClustering(this.map);
+        clusteringHandler.injectClusterStyles();
+        
         // Listen to map events with debouncing
         this.map.on('moveend', () => this.onMapChanged());
         this.map.on('zoomend', () => this.onMapChanged());
@@ -94,6 +98,9 @@ class ParkingCapacityApp {
                 info.textContent = `Zoom: ${zoom} (Data loading available at zoom ≤ ${CONFIG.overpass.maxDataZoom})`;
             }
             
+            // Update visible markers based on viewport for performance
+            markerHandler.updateVisibleMarkers(this.map);
+            
             // Auto-load data if in range and not already loading
             if (zoom <= CONFIG.overpass.maxDataZoom && !this.isLoading) {
                 // Optionally auto-load could be enabled here
@@ -128,13 +135,17 @@ class ParkingCapacityApp {
             if (features.length === 0) {
                 this.updateStatus('No parking data found in this area');
             } else {
-                // Clear old markers
-                markerHandler.clear();
+                // Merge new data with existing - don't clear old data
+                const result = await markerHandler.addOrUpdateMarkers(features);
+                const totalMarkers = markerHandler.markers.size;
                 
-                // Add new markers
-                markerHandler.addMarkers(features);
+                // Refresh clustering with all markers (new and updated)
+                clusteringHandler.clear();
+                const allMarkers = markerHandler.getAllMarkers();
+                clusteringHandler.addMarkersToCluster(allMarkers);
                 
-                this.updateStatus(`Loaded ${features.length} parking locations`);
+                const statusMsg = `Loaded ${features.length} parking locations (${result.added.length} new, ${result.updated.length} updated, ${totalMarkers} total)`;
+                this.updateStatus(statusMsg);
             }
         } catch (error) {
             console.error('Error loading data:', error);
@@ -150,6 +161,7 @@ class ParkingCapacityApp {
      */
     clearData() {
         markerHandler.clear();
+        clusteringHandler.clear();
         this.updateStatus('Data cleared');
     }
     

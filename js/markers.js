@@ -8,12 +8,17 @@ class MarkerHandler {
         this.markers = new Map(); // Store markers by ID
         this.markerLayer = null;
         this.stylesInjected = false; // Avoid re-injecting styles
+        this.visibleMarkers = new Set(); // Track currently visible markers
+        this.isViewportOptimizationEnabled = true;
+        this.viewportUpdateTimeout = null;
+        this.lastVisibleBounds = null;
     }
     
     /**
      * Initialize marker layer group
      */
     initializeLayer(map) {
+        this.map = map;
         this.markerLayer = L.featureGroup().addTo(map);
         return this.markerLayer;
     }
@@ -43,6 +48,7 @@ class MarkerHandler {
         marker.data = feature;
         marker.category = primaryCategory;
         marker.categories = allCategories;
+        marker.featureId = feature.id;
         
         // Lazy-load popup on demand for better performance
         marker.on('popupopen', () => {
@@ -55,10 +61,8 @@ class MarkerHandler {
         // Bind empty popup initially (content loaded on open)
         marker.bindPopup('');
         
-        // Add to layer
-        if (this.markerLayer) {
-            marker.addTo(this.markerLayer);
-        }
+        // NO longer add to layer here - viewport manager will handle it
+        // This allows us to control visibility based on viewport
         
         // Store marker
         this.markers.set(feature.id, marker);
@@ -383,6 +387,129 @@ class MarkerHandler {
         
         requestAnimationFrame(processBatch);
     }
+
+    /**
+     * Add many markers at once and return array of marker objects
+     * Used for clustering integration
+     */
+    async addMarkersAndGetArray(features) {
+        const markers = [];
+        const BATCH_SIZE = 50;
+        
+        return new Promise((resolve) => {
+            let batchIndex = 0;
+            
+            const processBatch = () => {
+                const end = Math.min(batchIndex + BATCH_SIZE, features.length);
+                for (let i = batchIndex; i < end; i++) {
+                    try {
+                        const marker = this.create(features[i]);
+                        if (marker) {
+                            markers.push(marker);
+                        }
+                    } catch (error) {
+                        console.error('Error creating marker for feature:', features[i], error);
+                    }
+                }
+                batchIndex = end;
+                
+                if (batchIndex < features.length) {
+                    requestAnimationFrame(processBatch);
+                } else {
+                    // All markers processed, resolve promise
+                    resolve(markers);
+                }
+            };
+            
+            requestAnimationFrame(processBatch);
+        });
+    }
+
+    /**
+     * Add or update markers - merges new data with existing data
+     * Returns { added: [], updated: [] } arrays of markers
+     */
+    async addOrUpdateMarkers(features) {
+        const added = [];
+        const updated = [];
+        const BATCH_SIZE = 50;
+        
+        return new Promise((resolve) => {
+            let batchIndex = 0;
+            
+            const processBatch = () => {
+                const end = Math.min(batchIndex + BATCH_SIZE, features.length);
+                for (let i = batchIndex; i < end; i++) {
+                    try {
+                        const feature = features[i];
+                        
+                        if (this.markers.has(feature.id)) {
+                            // Update existing marker
+                            const marker = this.markers.get(feature.id);
+                            this.updateMarkerData(marker, feature);
+                            updated.push(marker);
+                        } else {
+                            // Create new marker
+                            const marker = this.create(feature);
+                            if (marker) {
+                                added.push(marker);
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Error processing feature:', features[i], error);
+                    }
+                }
+                batchIndex = end;
+                
+                if (batchIndex < features.length) {
+                    requestAnimationFrame(processBatch);
+                } else {
+                    // All features processed
+                    resolve({ added, updated });
+                }
+            };
+            
+            requestAnimationFrame(processBatch);
+        });
+    }
+
+    /**
+     * Update marker data and visuals
+     */
+    updateMarkerData(marker, feature) {
+        // Check if data actually changed
+        const oldCapacity = marker.data.capacity;
+        const newCapacity = feature.capacity;
+        const dataChanged = JSON.stringify(oldCapacity) !== JSON.stringify(newCapacity);
+        
+        if (!dataChanged) {
+            return; // No update needed
+        }
+        
+        // Update marker data
+        marker.data = feature;
+        
+        // Recalculate categories
+        const primaryCategory = overpassHandler.getPrimaryCategory(feature.capacity);
+        const allCategories = overpassHandler.getAllCategories(feature.capacity);
+        const opacity = this.calculateOpacity(feature.capacity);
+        
+        // Update marker visual
+        const icon = this.createMultiColorIcon(allCategories, opacity, primaryCategory);
+        marker.setIcon(icon);
+        marker.category = primaryCategory;
+        marker.categories = allCategories;
+        
+        // Clear cached popup content so it regenerates
+        marker._popupContent = null;
+    }
+
+    /**
+     * Get array of all markers
+     */
+    getAllMarkers() {
+        return Array.from(this.markers.values());
+    }
     
     /**
      * Clear all markers
@@ -392,8 +519,104 @@ class MarkerHandler {
             this.markerLayer.clearLayers();
         }
         this.markers.clear();
+        this.visibleMarkers.clear();
+        this.lastVisibleBounds = null;
     }
-    
+
+    /**
+     * Update which markers are visible based on current map bounds
+     * This enables viewport-based rendering for performance optimization
+     * Primarily useful at zoom 13+ when clustering is disabled
+     */
+    updateVisibleMarkers(map) {
+        // Only apply viewport optimization at high zoom levels where clustering is disabled
+        // At zoom 1-12, clustering already handles optimization
+        const zoom = map.getZoom();
+        if (zoom <= 12) {
+            // Clustering handles visibility at these zoom levels
+            return;
+        }
+
+        if (!this.isViewportOptimizationEnabled || this.markers.size === 0 || !map) {
+            return;
+        }
+
+        const bounds = map.getBounds();
+        
+        // Skip if bounds haven't changed significantly
+        if (this.lastVisibleBounds && this._boundsSimilar(bounds, this.lastVisibleBounds)) {
+            return;
+        }
+        
+        this.lastVisibleBounds = bounds;
+
+        // Find markers in current bounds
+        const markersInBounds = new Set();
+        const padding = 0.05; // Add 5% padding to reduce flickering at edges
+        const paddedBounds = bounds.pad(padding);
+        
+        for (const [featureId, marker] of this.markers) {
+            const markerLatLng = marker.getLatLng();
+            
+            if (paddedBounds.contains(markerLatLng)) {
+                markersInBounds.add(featureId);
+                
+                // Add marker to layer if not already visible
+                if (!this.visibleMarkers.has(featureId)) {
+                    marker.addTo(this.markerLayer);
+                    this.visibleMarkers.add(featureId);
+                }
+            }
+        }
+
+        // Remove markers outside bounds
+        for (const featureId of this.visibleMarkers) {
+            if (!markersInBounds.has(featureId)) {
+                const marker = this.markers.get(featureId);
+                if (marker) {
+                    this.markerLayer.removeLayer(marker);
+                }
+                this.visibleMarkers.delete(featureId);
+            }
+        }
+    }
+
+    /**
+     * Check if two bounds are similar enough to skip update
+     */
+    _boundsSimilar(bounds1, bounds2) {
+        if (!bounds1 || !bounds2) return false;
+        
+        const ne1 = bounds1.getNorthEast();
+        const ne2 = bounds2.getNorthEast();
+        const sw1 = bounds1.getSouthWest();
+        const sw2 = bounds2.getSouthWest();
+        
+        // Use 0.001 degree tolerance (~111 meters)
+        const tolerance = 0.001;
+        
+        return Math.abs(ne1.lat - ne2.lat) < tolerance &&
+               Math.abs(ne1.lng - ne2.lng) < tolerance &&
+               Math.abs(sw1.lat - sw2.lat) < tolerance &&
+               Math.abs(sw1.lng - sw2.lng) < tolerance;
+    }
+
+    /**
+     * Toggle viewport optimization on/off
+     */
+    setViewportOptimization(enabled) {
+        this.isViewportOptimizationEnabled = enabled;
+        
+        if (!enabled) {
+            // If disabling, add all markers to layer
+            for (const [featureId, marker] of this.markers) {
+                if (!this.visibleMarkers.has(featureId)) {
+                    marker.addTo(this.markerLayer);
+                    this.visibleMarkers.add(featureId);
+                }
+            }
+        }
+    }
 
     
     /**
