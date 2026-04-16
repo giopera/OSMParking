@@ -512,6 +512,30 @@ class MarkerHandler {
     }
     
     /**
+     * Get all unique categories present in current markers
+     * Optionally filtered by bounds to show only visible categories in viewport
+     */
+    getAllCategoriesInMarkers(bounds = null) {
+        const categoriesSet = new Set();
+        
+        // Collect all categories from markers
+        for (const marker of this.markers.values()) {
+            // If bounds are provided, only include markers within the viewport
+            if (bounds && !bounds.contains(marker.getLatLng())) {
+                continue;
+            }
+            
+            if (marker.categories && Array.isArray(marker.categories)) {
+                marker.categories.forEach(cat => categoriesSet.add(cat));
+            } else if (marker.category) {
+                categoriesSet.add(marker.category);
+            }
+        }
+        
+        return Array.from(categoriesSet);
+    }
+    
+    /**
      * Clear all markers
      */
     clear() {

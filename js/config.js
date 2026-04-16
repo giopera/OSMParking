@@ -31,27 +31,27 @@ const CONFIG = {
     categories: {
         main: {
             name: 'Main Parking',
-            color: '#2196f3',
+            color: '#008cff',
             tags: ['capacity']
         },
         disabled: {
             name: 'Disabled Parking',
-            color: '#4CAF50',
+            color: '#ffc519',
             tags: ['capacity:disabled']
         },
         parent: {
             name: 'Parent/Baby Parking',
-            color: '#FF9800',
+            color: '#d600d6',
             tags: ['capacity:parent', 'capacity:baby']
         },
         charging: {
             name: 'Charging Parking',
-            color: '#9C27B0',
+            color: '#0ab407',
             tags: ['capacity:charging']
         },
         woman: {
             name: 'Woman Parking',
-            color: '#E91E63',
+            color: '#ff61dd',
             tags: ['capacity:woman']
         },
         man: {
@@ -61,7 +61,7 @@ const CONFIG = {
         },
         emergency: {
             name: 'Emergency Parking',
-            color: '#F44336',
+            color: '#f02d1f',
             tags: ['capacity:emergency']
         },
         other: {
@@ -80,22 +80,22 @@ const CONFIG = {
     parkingSpaces: {
         disabled: {
             name: 'Disabled Space',
-            color: '#4CAF50',
+            color: '#ffc519',
             icon: '♿'
         },
         charging: {
             name: 'Charging Point',
-            color: '#9C27B0',
+            color: '#0ab407',
             icon: '⚡'
         },
         parent: {
             name: 'Parent/Baby Space',
-            color: '#FF9800',
+            color: '#d600d6',
             icon: '👶'
         },
         woman: {
             name: 'Woman Space',
-            color: '#E91E63',
+            color: '#ff61dd',
             icon: '♀'
         },
         man: {
@@ -105,7 +105,7 @@ const CONFIG = {
         },
         emergency: {
             name: 'Emergency Space',
-            color: '#F44336',
+            color: '#f02d1f',
             icon: '🚨'
         }
     },

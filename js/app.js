@@ -62,8 +62,8 @@ class ParkingCapacityApp {
         clearBtn?.addEventListener('click', () => this.clearData());
         
         // Overpass server update
-        const updateBtn = document.getElementById('update-overpass');
-        updateBtn?.addEventListener('click', () => this.updateOverpassServer());
+        const overpassBox = document.getElementById('overpass-url');
+        overpassBox?.addEventListener('change', () => this.updateOverpassServer());
         
         // Panel toggle
         const toggleBtn = document.getElementById('toggle-panel');
@@ -100,6 +100,9 @@ class ParkingCapacityApp {
             
             // Update visible markers based on viewport for performance
             markerHandler.updateVisibleMarkers(this.map);
+            
+            // Update legend to show only categories visible in current viewport
+            this.updateLegend();
             
             // Auto-load data if in range and not already loading
             if (zoom <= CONFIG.overpass.maxDataZoom && !this.isLoading) {
@@ -144,6 +147,9 @@ class ParkingCapacityApp {
                 const allMarkers = markerHandler.getAllMarkers();
                 clusteringHandler.addMarkersToCluster(allMarkers);
                 
+                // Update legend to show only categories present in data
+                this.updateLegend();
+                
                 const statusMsg = `Loaded ${features.length} parking locations (${result.added.length} new, ${result.updated.length} updated, ${totalMarkers} total)`;
                 this.updateStatus(statusMsg);
             }
@@ -162,6 +168,7 @@ class ParkingCapacityApp {
     clearData() {
         markerHandler.clear();
         clusteringHandler.clear();
+        this.updateLegend();
         this.updateStatus('Data cleared');
     }
     
@@ -218,6 +225,41 @@ class ParkingCapacityApp {
         if (status) {
             status.textContent = `Status: ${message}`;
         }
+    }
+    
+    /**
+     * Update legend to show only categories present in loaded data
+     * Optionally filters by map bounds to show only visible categories in viewport
+     */
+    updateLegend(bounds = null) {
+        // If no bounds provided, use current map bounds
+        if (!bounds && this.map) {
+            bounds = this.map.getBounds();
+        }
+        
+        const visibleCategories = markerHandler.getAllCategoriesInMarkers(bounds);
+        const legendItems = document.querySelectorAll('#legend .legend-item');
+        
+        let allHidden = true;
+
+        legendItems.forEach(item => {
+            const category = item.getAttribute('data-category');
+            if (visibleCategories.includes(category)) {
+                item.style.display = null;
+                allHidden = false;
+            } else {
+                item.style.display = 'none';
+            }
+        });
+
+        const info = document.getElementById('categories-panel');
+
+        if (allHidden) {
+            info.style.display = 'none';
+        } else {
+            info.style.display = null;
+        }
+
     }
     
     /**
