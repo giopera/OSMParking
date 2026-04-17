@@ -564,19 +564,29 @@ class MarkerHandler {
                     continue;
                 }
                 
-                // Check if this marker has any of the tags for this category
                 const feature = marker.data;
-                const hasTag = categoryConfig.tags.some(tag => {
-                    // Check if the tag exists in the feature's capacity object
-                    if (tag === 'capacity:*') {
-                        // Wildcard - has any capacity tag
-                        return feature.capacity && Object.keys(feature.capacity).length > 0;
-                    }
-                    return feature.capacity && feature.capacity[tag] !== undefined;
-                });
                 
-                if (hasTag) {
-                    countWithTag++;
+                // Special handling for no_capacity category (parkings with no tags)
+                if (categoryKey === 'no_capacity') {
+                    // Count parkings that have no capacity data
+                    const hasNoCapacity = !feature.capacity || Object.keys(feature.capacity).length === 0;
+                    if (hasNoCapacity) {
+                        countWithTag++;
+                    }
+                } else {
+                    // Check if this marker has any of the tags for this category
+                    const hasTag = categoryConfig.tags.some(tag => {
+                        // Check if the tag exists in the feature's capacity object
+                        if (tag === 'capacity:*') {
+                            // Wildcard - has any capacity tag
+                            return feature.capacity && Object.keys(feature.capacity).length > 0;
+                        }
+                        return feature.capacity && feature.capacity[tag] !== undefined;
+                    });
+                    
+                    if (hasTag) {
+                        countWithTag++;
+                    }
                 }
             }
             
