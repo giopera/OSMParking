@@ -52,7 +52,7 @@ const CONFIG = {
         woman: {
             name: 'Woman Parking',
             color: '#ff61dd',
-            tags: ['capacity:woman']
+            tags: ['capacity:women']
         },
         man: {
             name: 'Man Parking',

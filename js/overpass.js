@@ -181,7 +181,8 @@ out center;
         ];
         
         capacityKeys.forEach(key => {
-            if (tags[key]) {
+            // Use 'key in tags' to include tags with falsy values like 0 or empty string
+            if (key in tags) {
                 capacityInfo[key] = parseInt(tags[key]) || tags[key];
             }
         });
@@ -214,20 +215,46 @@ out center;
     
     /**
      * Get all categories present in this parking
+     * Dynamically evaluates categories based on CONFIG.categories configuration
      */
     getAllCategories(capacityInfo) {
         const categories = [];
+        
         if (Object.keys(capacityInfo).length === 0) {
             categories.push('no_capacity');
         } else {
-            if (capacityInfo['capacity']) categories.push('main');
-            if (capacityInfo['capacity:disabled']) categories.push('disabled');
-            if (capacityInfo['capacity:parent'] || capacityInfo['capacity:baby']) categories.push('parent');
-            if (capacityInfo['capacity:charging']) categories.push('charging');
-            if (capacityInfo['capacity:emergency']) categories.push('emergency');
-            if (capacityInfo['capacity:woman']) categories.push('woman');
-            if (capacityInfo['capacity:man']) categories.push('man');
+            // Iterate through all configured categories (except no_capacity and other)
+            for (const categoryKey in CONFIG.categories) {
+                if (categoryKey === 'no_capacity' || categoryKey === 'other') {
+                    continue; // Skip special categories
+                }
+                
+                const categoryConfig = CONFIG.categories[categoryKey];
+                const tags = categoryConfig.tags || [];
+                
+                // Check if any of the category's tags exist in capacityInfo
+                const hasCategory = tags.some(tag => {
+                    if (tag.endsWith(':*')) {
+                        // Handle wildcard tags (e.g., 'capacity:*')
+                        const prefix = tag.slice(0, -2);
+                        return Object.keys(capacityInfo).some(key => key.startsWith(prefix));
+                    } else {
+                        console.log('Checking tag:', tag, 'in capacityInfo:', capacityInfo);
+                        // Exact match
+                        return capacityInfo[tag] !== undefined;
+                    }
+                });
+                
+                console.log('Category:', categoryKey, 'hasCategory:', hasCategory);
+
+                if (hasCategory) {
+                    categories.push(categoryKey);
+                }
+            }
         }
+
+        console.log('Determined categories:', categories);
+        
         return categories;
     }
     
