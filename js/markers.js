@@ -534,6 +534,60 @@ class MarkerHandler {
         
         return Array.from(categoriesSet);
     }
+
+    /**
+     * Get statistics for each category based on presence of tag in parking features
+     * Calculates percentage of parking spaces that have tags for each category
+     * Optionally filtered by bounds to show only visible categories in viewport
+     * Returns object with category as key and {count, percentage} as value
+     */
+    getCategoryStatistics(bounds = null) {
+        const stats = {};
+        let totalMarkers = 0;
+        
+        // Count total markers (for percentage calculation)
+        for (const marker of this.markers.values()) {
+            // If bounds are provided, only include markers within the viewport
+            if (bounds && !bounds.contains(marker.getLatLng())) {
+                continue;
+            }
+            totalMarkers++;
+        }
+        
+        // Count markers that have each category's tags
+        for (const [categoryKey, categoryConfig] of Object.entries(CONFIG.categories)) {
+            let countWithTag = 0;
+            
+            for (const marker of this.markers.values()) {
+                // If bounds are provided, only include markers within the viewport
+                if (bounds && !bounds.contains(marker.getLatLng())) {
+                    continue;
+                }
+                
+                // Check if this marker has any of the tags for this category
+                const feature = marker.data;
+                const hasTag = categoryConfig.tags.some(tag => {
+                    // Check if the tag exists in the feature's capacity object
+                    if (tag === 'capacity:*') {
+                        // Wildcard - has any capacity tag
+                        return feature.capacity && Object.keys(feature.capacity).length > 0;
+                    }
+                    return feature.capacity && feature.capacity[tag] !== undefined;
+                });
+                
+                if (hasTag) {
+                    countWithTag++;
+                }
+            }
+            
+            stats[categoryKey] = {
+                count: countWithTag,
+                percentage: totalMarkers > 0 ? Math.round((countWithTag / totalMarkers) * 100) : 0
+            };
+        }
+        
+        return stats;
+    }
     
     /**
      * Clear all markers

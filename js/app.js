@@ -229,6 +229,7 @@ class ParkingCapacityApp {
     
     /**
      * Update legend to show only categories present in loaded data
+     * Generates legend items from config with percentage statistics
      * Optionally filters by map bounds to show only visible categories in viewport
      */
     updateLegend(bounds = null) {
@@ -238,23 +239,40 @@ class ParkingCapacityApp {
         }
         
         const visibleCategories = markerHandler.getAllCategoriesInMarkers(bounds);
-        const legendItems = document.querySelectorAll('#legend .legend-item');
+        const statistics = markerHandler.getCategoryStatistics(bounds);
+        const legendContainer = document.getElementById('legend');
         
-        let allHidden = true;
-
-        legendItems.forEach(item => {
-            const category = item.getAttribute('data-category');
-            if (visibleCategories.includes(category)) {
-                item.style.display = null;
-                allHidden = false;
-            } else {
-                item.style.display = 'none';
+        // Clear existing legend items
+        legendContainer.innerHTML = '';
+        
+        let hasVisibleItems = false;
+        
+        // Generate legend items from config for visible categories
+        for (const [categoryKey, categoryData] of Object.entries(CONFIG.categories)) {
+            if (visibleCategories.includes(categoryKey)) {
+                hasVisibleItems = true;
+                const stats = statistics[categoryKey] || { count: 0, percentage: 0 };
+                const percentage = stats.percentage;
+                
+                const legendItem = document.createElement('div');
+                legendItem.className = 'legend-item';
+                legendItem.setAttribute('data-category', categoryKey);
+                
+                legendItem.innerHTML = `
+                    <div class="legend-item-left">
+                        <span class="legend-color" style="background-color: ${categoryData.color};"></span>
+                        <span>${categoryData.name}</span>
+                    </div>
+                    <span class="legend-percentage">${percentage}%</span>
+                `;
+                
+                legendContainer.appendChild(legendItem);
             }
-        });
-
+        }
+        
         const info = document.getElementById('categories-panel');
 
-        if (allHidden) {
+        if (!hasVisibleItems) {
             info.style.display = 'none';
         } else {
             info.style.display = null;
